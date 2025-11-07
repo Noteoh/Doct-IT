@@ -5,7 +5,7 @@ import time
 from bs4 import BeautifulSoup
 import csv
 
-# === Chrome setup ===
+# --- Configuration du navigateur (connexion à Chrome lancé sur le port 9222)
 chrome_options = Options()
 chrome_options.add_experimental_option("debuggerAddress", "127.0.0.1:9222")
 
@@ -13,25 +13,21 @@ driver_path = r"/Users/yassinetamant/PycharmProjects/PythonProject/chromedriver"
 service = Service(driver_path)
 driver = webdriver.Chrome(service=service, options=chrome_options)
 
-# === Open website ===
 driver.get("https://www.utopya.fr")
-time.sleep(5)  # wait for page + navbar to load
+time.sleep(5)  # on attend que la page et le menu se chargent
 
-# === Parse HTML with BeautifulSoup ===
 html = driver.page_source
 soup = BeautifulSoup(html, "html.parser")
 
-# === Find navbar ===
-nav_div = soup.find("div", class_="nav-sections")  # adjust if needed
+nav_div = soup.find("nav", class_="navigation")
 
-# === Open CSV file to store data ===
 with open("brands_models.csv", "w", newline="", encoding="utf-8") as file:
     writer = csv.writer(file)
     writer.writerow(["Brand", "Model", "URL"])
 
     if nav_div:
-        # Find main brand items
-        brands = nav_div.select("li.level1 > a")
+        # 🔹 Niveau 1 : les marques (Apple, Samsung, Xiaomi, etc.)
+        brands = nav_div.select("li.level1.category-item > a")
 
         for brand in brands:
             brand_name = brand.get_text(strip=True)
@@ -42,11 +38,10 @@ with open("brands_models.csv", "w", newline="", encoding="utf-8") as file:
 
             print(f"\n📱 Brand: {brand_name} → {brand_url}")
 
-            # Try to find submenu with models
-            submenu = brand.find_next("ul", class_="submenu")
-
+            # 🔹 Niveau 2 : les modèles (iPhone 15, Galaxy S23, etc.)
+            submenu = brand.find_parent("li", class_="level1")
             if submenu:
-                models = submenu.select("li.level2 > a")
+                models = submenu.select("li.level2.category-item a")
 
                 for model in models:
                     model_name = model.get_text(strip=True)
@@ -57,12 +52,10 @@ with open("brands_models.csv", "w", newline="", encoding="utf-8") as file:
 
                     print(f"   └─ {model_name} → {model_url}")
                     writer.writerow([brand_name, model_name, model_url])
-
             else:
-                # no models, write just brand
                 writer.writerow([brand_name, "", brand_url])
     else:
-        print("❌ Navbar not found. Check class names.")
+        print("Navbar not found. Check class names.")
 
 driver.quit()
-print("\n✅ Done! Data saved in brands_models.csv")
+print("Data saved in brands_models.csv")
